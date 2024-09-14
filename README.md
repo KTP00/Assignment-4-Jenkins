@@ -105,7 +105,7 @@ sudo apt-get update && sudo apt-get upgrade
     Active: active (running) since Tue 2018-11-13 16:19:01 +03; 4min 57s ago
     ```
 ทดสอบ : `http://<ip-address>:8080`  
-## Part Configuring Jenkins
+# Part Configuring Jenkins
 **ดูสไลด์ DevOps_Gitlab_Jenkins_k8s Version KTP หัวข้อ Jenkins ประกอบการ config**
 
 **Workshop Gitlab Part Jenkins setup by KTP : [https://gitlab.com/ktpfw1110/my-devops](https://gitlab.com/ktpfw1110/my-devops#jenkins-setup)**
@@ -125,10 +125,9 @@ sudo apt-get update && sudo apt-get upgrade
     - Add Credentials ให้ 2 Instance คุยกันผ่าน SSH Username with private key
     - Add new node สำหรับ Instance build-server
   - View Jobs List, Jobs log, Console Output
-  - Automate CI/CD
+- Automate CI/CD
 
-## เริ่มต้นตั้งค่า Jenkins
-### Setup Jenkins Master
+## Setup Jenkins Master ( เริ่มตั้งค่า Jenkins )
 1. Unlock Jenkins
     ![Unlock Jenkins](images/img11.png)
     - ssh เข้าไปที่ Jenkins Instance
@@ -152,7 +151,7 @@ sudo apt-get update && sudo apt-get upgrade
 1. Add Credentials ไปที่ Dashboard -> Manage Jenkins -> Credentials -> System -> Global credentials (unrestricted) และกดปุ่ม New credentials
     ![Add Credentials 1](images/img17.png)
     username และ password ของ Gitlab, ID นำไปใช้ใน code Jenkinsfile
-### Create New Jobs
+## Create New Jobs
 1. กด New Item ตั้งชื่อ job และเลือก pipeline
     ![New Job](images/img18.png)
 1. เข้าไป config job ที่ชื่อว่า test_admin
@@ -164,7 +163,8 @@ sudo apt-get update && sudo apt-get upgrade
 1. เข้าไป config job ที่ชื่อว่า test_admin
     ![pipeline 2](images/img20.png)
 1. จากนั้นกด Save
-### Jenkinsfile (Pipeline Script) : ทดสอบทำงานที่ Agent any จะส่งไปทำงานที่ Instance Jenkins
+## Pipeline Script ( Jenkinsfile ) 
+### ทดสอบทำงานที่ Agent any จะส่งไปทำงานที่ Instance Jenkins
 - ทดลองสร้าง Jenkinsfile ใน Repo test-jenkins ที่ได้มีการ add credentials ไว้ `git clone https://gitlab.com/ktpfw1110/test-jenkins.git`
     ![pipeline script 1](images/img21.png)
 - ทำการ Push to dev แล้วจากนั้นกด Merge to main
@@ -175,7 +175,7 @@ sudo apt-get update && sudo apt-get upgrade
     Running on Agent ไหน หรือ Instance ไหน
     ![pipeline script 3](images/img24.png)
     echo คำสั่งตาม Jenkinsfile ที่เขียน
-### Jenkinsfile (Pipeline Script) : ทดสอบส่งคำสั่งจาก master jenkins -> slave build-server 
+### ทดสอบส่งคำสั่งจาก master jenkins -> slave build-server 
 - Launch instance build-server และ ติดตั้ง docker,java [https://github.com/ktp00/Assignment-VM/](https://github.com/ktp00/Assignment-VM?tab=readme-ov-file#install-docker--compose)
 - Add Credentials ให้ 2 Instance คุยกันผ่าน SSH Username with private key
     - กรอกข้อมูลตามภาพ
@@ -197,7 +197,7 @@ sudo apt-get update && sudo apt-get upgrade
     ![New Node 5](images/img32.png)
     - กดปุ่ม save จะมี build-server node เพิ่มเข้ามาใหม่
     ![New Node 6](images/img33.png)
-- แก้ไข Jenkinsfile
+- แก้ไข Jenkinsfile ทดสอบส่งคำสั่ง docker version จาก master to slave สังเกตได้จาก agent เปลี่ยนเป็น build-server
     ![jenkinsfile docker](images/img34.png)
     - push to dev and merge to main
     - กด build(manual) ถ้า error ให้ไปกำหนดสิทธิ์ docker Instance build-server
@@ -205,13 +205,13 @@ sudo apt-get update && sudo apt-get upgrade
     - เมื่อสำเร็จแล้วให้ไปดู ที่ Console Log
         ![Build Success 1](images/img36.png)
         ![Build Success 2](images/img37.png)
-## ขั้นตอนการทำ Automate CI
+# ขั้นตอนการทำ Automate CI
 - ไปที่ Job(test_admin) ของตัวเอง Dashboard -> test_admin -> Configuration และไปที่เมนู Build Triggers -> checked Poll SCM -> Schedule ใส่ crontab : 
     ```
     H/3 * * * *
     ```
     ![Automate CI](images/img38.png)
-- แก้ไข Jenkinsfile
+- แก้ไข Jenkinsfile ส่งคำสั่ง build image จาก master to slave สังเกตได้จาก agent เปลี่ยนเป็น build-server
     ```
     pipeline {
         agent {label 'build-server'}
