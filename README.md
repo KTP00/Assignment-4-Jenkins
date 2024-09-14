@@ -54,61 +54,86 @@
     ![Launch instance 5](images/img10.png)
 
 ## Step 5 Installing and configuring Jenkins
+ขั้นตอนโดยรวมดังนี้
+- Part Downloading and installing Jenkins
+- Part Configuring Jenkins
 ### เชื่อมต่อไปที่ Instance Jenkins ผ่าน ssh ด้วยคำสั่ง หมายเหตุ ตรวจสอบใน AWS ว่า IP มีการเปลี่ยนแปลงหรือไม่
+`ssh -i <path/.pem> <ubuntu@ip-address>`
 ```
-ssh -i "C:\Users\deefz\Desktop\windows-key.pem" ec2-user@3.106.113.37
+ssh -i "C:\Users\deefz\Desktop\windows-key.pem" ubuntu@<ip-address>
 ```
-### Downloading and installing Jenkins
-1. Ensure that your software packages are up to date on your instance by using the following command to perform a quick software update:
-    ```
-    sudo yum update –y
-    ```
-1. Add the Jenkins repo using the following command:
-    ```
-    sudo wget -O /etc/yum.repos.d/jenkins.repo \
-    https://pkg.jenkins.io/redhat-stable/jenkins.repo
-    ```
-1. Import a key file from Jenkins-CI to enable installation from the package:
-    ```
-    sudo rpm --import https://pkg.jenkins.io/redhat-stable/jenkins.io-2023.key
-
-    sudo yum upgrade
-    ```
-1. Install Java (Amazon Linux 2023):
-    ```
-    sudo dnf install java-17-amazon-corretto -y
-    ```
-    or
+```
+sudo apt-get update && sudo apt-get upgrade
+```
+## Part Downloading and installing Jenkins (Ubuntu)
+[Ref : https://www.jenkins.io/doc/book/installing/linux/](https://www.jenkins.io/doc/book/installing/linux/)
+1. Java Install
 
     ```
-    sudo dnf install java-17-amazon-corretto -y
+    sudo apt update
+    sudo apt install fontconfig openjdk-17-jre
+    java -version
+    openjdk version "17.0.8" 2023-07-18
+    OpenJDK Runtime Environment (build 17.0.8+7-Debian-1deb12u1)
+    OpenJDK 64-Bit Server VM (build 17.0.8+7-Debian-1deb12u1, mixed mode, sharing)
     ```
-1. Install Jenkins:
+1. Jenkins Install for Ubuntu
     ```
-    sudo yum install jenkins -y
+    sudo wget -O /usr/share/keyrings/jenkins-keyring.asc \
+    https://pkg.jenkins.io/debian-stable/jenkins.io-2023.key
+    echo "deb [signed-by=/usr/share/keyrings/jenkins-keyring.asc]" \
+    https://pkg.jenkins.io/debian-stable binary/ | sudo tee \
+    /etc/apt/sources.list.d/jenkins.list > /dev/null
+    sudo apt-get update
+    sudo apt-get install jenkins
     ```
-1. Enable the Jenkins service to start at boot:
+1. You can enable the Jenkins service to start at boot with the command:
     ```
     sudo systemctl enable jenkins
     ```
-1. Start Jenkins as a service:
+1. You can start the Jenkins service with the command:
     ```
     sudo systemctl start jenkins
     ```
-    You can check the status of the Jenkins service using the command:
+1. You can check the status of the Jenkins service using the command:
     ```
     sudo systemctl status jenkins
     ```
-ทดสอบ : `http://3.106.232.226:8080`  
-### Configuring Jenkins
+    If everything has been set up correctly, you should see an output like this:
+    ```
+    Loaded: loaded (/lib/systemd/system/jenkins.service; enabled; vendor preset: enabled)
+    Active: active (running) since Tue 2018-11-13 16:19:01 +03; 4min 57s ago
+    ```
+ทดสอบ : `http://<ip-address>:8080`  
+## Part Configuring Jenkins
 **ดูสไลด์ DevOps_Gitlab_Jenkins_k8s Version KTP หัวข้อ Jenkins ประกอบการ config**
 
 **Workshop Gitlab Part Jenkins setup by KTP : [https://gitlab.com/ktpfw1110/my-devops](https://gitlab.com/ktpfw1110/my-devops#jenkins-setup)**
+### Overview Step Config Jenkins ( ขั้นตอนในการ config Jenkins โดยรวม )
+- สร้าง VM หรือ Instances : jenkins, build-server
+- Setup Jenkins Master
+  - Unlock Jenkins
+  - Install Plugins
+  - Create Admin User
+  - **Add Credentials** 
+- Create New Jobs
+  - Setting and Config Trigger
+- Pipeline Script
+  - ทดสอบทำงานที่ Agent any จะส่งไปทำงานที่ Instance Jenkins
+  - ทดสอบส่งคำสั่งจาก master jenkins -> slave build-server ให้ไป run command docker version
+    - สร้าง Instance build-server และติดตั้ง Docker, java
+    - Add Credentials ให้ 2 Instance คุยกันผ่าน SSH Username with private key
+    - Add new node สำหรับ Instance build-server
+  - View Jobs List, Jobs log, Console Output
+  - Automate CI/CD
+
+## เริ่มต้นตั้งค่า Jenkins
+### Setup Jenkins Master
 1. Unlock Jenkins
     ![Unlock Jenkins](images/img11.png)
     - ssh เข้าไปที่ Jenkins Instance
         ```
-        ssh -i "C:\Users\deefz\Desktop\windows-key.pem" ec2-user@3.106.232.226
+        ssh -i "C:\Users\deefz\Desktop\windows-key.pem" ubuntu@<ip-address>
         ```
     - เข้าไปที่ path "/var/lib/jenkins/secrets/initialAdminPassword" เพื่อนำ password มากรอก
         ```
@@ -139,4 +164,74 @@ ssh -i "C:\Users\deefz\Desktop\windows-key.pem" ec2-user@3.106.113.37
 1. เข้าไป config job ที่ชื่อว่า test_admin
     ![pipeline 2](images/img20.png)
 1. จากนั้นกด Save
-### Jenkinsfile (Pipeline Script)
+### Jenkinsfile (Pipeline Script) : ทดสอบทำงานที่ Agent any จะส่งไปทำงานที่ Instance Jenkins
+- ทดลองสร้าง Jenkinsfile ใน Repo test-jenkins ที่ได้มีการ add credentials ไว้ `git clone https://gitlab.com/ktpfw1110/test-jenkins.git`
+    ![pipeline script 1](images/img21.png)
+- ทำการ Push to dev แล้วจากนั้นกด Merge to main
+- จากนั้นทำการไปกด build(ลองกดแบบ manual) ที่ jenkins UI 
+    ![pipeline script 2](images/img22.png)
+- ไปดูที่ Jenkins Dashboard -> test_admin -> #1
+    ![pipeline script 3](images/img23.png)
+    Running on Agent ไหน หรือ Instance ไหน
+    ![pipeline script 3](images/img24.png)
+    echo คำสั่งตาม Jenkinsfile ที่เขียน
+### Jenkinsfile (Pipeline Script) : ทดสอบส่งคำสั่งจาก master jenkins -> slave build-server 
+- Launch instance build-server และ ติดตั้ง docker,java [https://github.com/ktp00/Assignment-VM/](https://github.com/ktp00/Assignment-VM?tab=readme-ov-file#install-docker--compose)
+- Add Credentials ให้ 2 Instance คุยกันผ่าน SSH Username with private key
+    - กรอกข้อมูลตามภาพ
+    ![add credential 1](images/img25.png)
+    - private key มาจากไฟล์ .pem
+    ![add credential 2](images/img26.png)
+    - กด create แล้วจะขึ้น credential ใหม่ devops ดังภาพ
+    ![add credential 3](images/img27.png)
+- Add new node สำหรับ Instance build-server
+    - กดปุ่ม New Node
+    ![New Node 1](images/img28.png)
+    - สร้างชื่อ node 
+    ![New Node 2](images/img29.png)
+    - กรอกข้อมูลตามภาพ ดูรายละเอียดเพิ่มเติมในสไลด์ที่ lecture ไว้
+    ![New Node 3](images/img30.png)
+    - ตั้งค่า ssh
+    ![New Node 4](images/img31.png)
+    - กอกข้อมูลตามภาพ ดูรายละเอียดเพิ่มเติมในสไลด์ที่ lecture ไว้
+    ![New Node 5](images/img32.png)
+    - กดปุ่ม save จะมี build-server node เพิ่มเข้ามาใหม่
+    ![New Node 6](images/img33.png)
+- แก้ไข Jenkinsfile
+    ![jenkinsfile docker](images/img34.png)
+    - push to dev and merge to main
+    - กด build(manual) ถ้า error ให้ไปกำหนดสิทธิ์ docker Instance build-server
+        ![error docker permission](images/img35.png)
+    - เมื่อสำเร็จแล้วให้ไปดู ที่ Console Log
+        ![Build Success 1](images/img36.png)
+        ![Build Success 2](images/img37.png)
+## ขั้นตอนการทำ Automate CI
+- ไปที่ Job(test_admin) ของตัวเอง Dashboard -> test_admin -> Configuration และไปที่เมนู Build Triggers -> checked Poll SCM -> Schedule ใส่ crontab : 
+    ```
+    H/3 * * * *
+    ```
+    ![Automate CI](images/img38.png)
+- แก้ไข Jenkinsfile
+    ```
+    pipeline {
+        agent {label 'build-server'}
+        environment {
+            APP_NAME = "test app name"
+        }
+        stages {
+            stage('Build Image'){
+                steps {
+                    sh "echo ${env.APP_NAME}"
+                    sh "docker version"
+                    sh "docker build -t registry.gitlab.com/ktpfw1110/my-devops ."
+                }
+            }
+        }
+    }
+    ```
+- push dev and merge main
+- ไปดูที่ Jenkins Job จะเห็นว่ามัน Auto Build อยู่ใน queue
+- ไปดูใน Instance build-server ใช้คำสั่ง เพื่อดู image ที่สร้างไว้ตาม jenkinsfile script
+    ```
+    docker images
+    ```
