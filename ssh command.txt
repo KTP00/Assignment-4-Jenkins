@@ -1,0 +1,1084 @@
+ssh -i "C:\Users\deefz\Desktop\windows-key.pem" ec2-user@3.106.113.37
+
+# DevOps Project First Part Gitlab
+## H2
+### H3
+#### H4
+##### H5
+###### H6
+
+- One
+- Two
+- Three
+
+1. One
+1. Two
+1. Three
+
+[Google](https://www.google.com)
+
+```javascript
+let a = 10;
+console.log(a);
+```
+
+```mermaid
+graph TD;
+    A-->B;
+    A-->C;
+    B-->D;
+    C-->D;
+```
+
+# Part Docker
+## Workshop Docker by อ.สมหมาย กรังพานิช
+Slide : DevOps_Gitlab_Jenkins_K8s.  
+pull image และ run volumes -v
+
+
+### Command-Run
+ในการใช้ Docker บน Windows ถ้าคุณใช้ path ที่มี backslashes (\) คุณต้องใช้เครื่องหมาย \\ หรือเปลี่ยนเป็น forward slashes (/) แทน และเนื่องจาก path ของคุณมีช่องว่างและอักขระพิเศษ คุณควรครอบ path ทั้งหมดด้วยเครื่องหมายคำพูด (").  
+
+คำสั่งที่ถูกต้องควรมีลักษณะดังนี้:
+```
+docker run --name web-2 -p 8082:80 -d -v "D:/KMITL/3rd junior/semester 1/01076035 SOFTWARE DEVELOPMENT PROCESS IN PRACTICE/Workshop Docker/html:/usr/share/nginx/html" nginx
+```
+หรือถ้าคุณต้องการใช้ backslashes:
+```
+docker run --name web-2 -p 8082:80 -d -v "D:\\KMITL\\3rd junior\\semester 1\\01076035 SOFTWARE DEVELOPMENT PROCESS IN PRACTICE\\Workshop Docker\\html:/usr/share/nginx/html" nginx
+```
+
+### เริ่มการ Authen เพื่อนำ Containers ไปเก็บไว้บน Gitlab Registry
+ทำการ login ไปที่ domain ของ gitlab
+```
+docker login registry.gitlab.com
+```
+### สร้าง Dockerfile เมื่อสร้างเสร็จ Build ให้เป็น imanges
+Dockerfile
+```Dockerfile
+FROM nginx:alpine
+RUN echo "hello world"
+EXPOSE 80
+COPY ./html /usr/share/nginx/html
+```
+
+```
+docker build -t test .
+docker run --name test-web -p 9080:80 -d test
+docker image ls
+
+```
+
+### เอาไปเก็บบน Registry
+ไปที่ Deploy -> Container Registry เพื่อ setup gitlab registry
+
+![Setup Gitlab Registry ](./images/img1.png)
+
+ต้องเปลี่ยนชื่อ tag images ให้ตรงกับในเว็บ gitlab ก่อน ถึงเอาขึ้น Registry ได้
+
+```
+docker tag test registry.gitlab.com/ktpfw1110/my-devops
+docker push registry.gitlab.com/ktpfw1110/my-devops
+```
+![Pushed Gitlab Registry ](./images/img2.png)
+
+คำสั่งที่ทำให้ เพื่อนไป download images มา run ในเครื่องตัวเองได้
+```
+docker run --name a-web -p 9081 -d registry.gitlab.com/ktpfw1110/my-devops
+```
+
+### เรื่อง Docker Compose ใช้กรณีที่จะทำมากกว่า 1 container ในคราวเดียว
+สร้างไฟล์ docker-compose.yml
+```
+version: '3'
+services:
+  mydb:
+    image: mysql
+    environment:
+      MYSQL_ROOT_PASSWORD: root1234
+      MYSQL_DATABASE: simple_db
+      MYSQL_USER: simple
+      MYSQL_PASSWORD: simple1234
+    volumes:
+      - ./data/mysql:/var/lib/mysql
+    myadmin:
+      image: phpmyadmin
+      environment:
+        PMA_HOST : mydb 
+      ports:
+        - 9084:80
+```
+### start docker compose
+```
+docker compose up -d
+docker network ls
+docker ps
+```
+เพิ่ม code 
+```version: '3'
+services:
+  mydb:
+    image: mysql
+    environment:
+      MYSQL_ROOT_PASSWORD: root1234
+      MYSQL_DATABASE: simple_db
+      MYSQL_USER: simple
+      MYSQL_PASSWORD: simple1234
+    volumes:
+      - ./data/mysql:/var/lib/mysql
+  myadmin:
+    image: phpmyadmin
+    environment:
+      PMA_HOST : mydb
+    ports:
+      - 9084:80
+  myweb:
+    build: 
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - 9085:80
+```
+Run command :
+```
+docker compose up -d --build
+```
+
+## Workshop Kubernetes Minikube
+#### Workshop Minikube สไลด์ อ.สมหมาย กรังพานิช minikube หน้า 36
+เปิด Docker Desktop จากนั้นเปิด Terminal
+```
+minikube start
+```
+
+```
+kubectl get node
+
+kubectl create deployment hello-node --image=nginx
+
+kubectl get deployment
+
+kubectl get pod
+```
+### Expose ไปหน้าเว็บด้วย LoadBalancer (LoadBalancer server minikube)  
+เปิด Terminal ค้างไว้อย่าปิด
+```
+minikube tunnel 
+```
+เปิดอีก Terminal
+```
+kubectl expose deployment hello-node --type=LoadBalancer --port=8080 --target-port=80
+
+kubectl get svc หรือ kubectl get service
+```
+**ลบทุกอย่างออกเพื่อทำอีกแบบ**
+- ปิด minikube tunnel เข้า terminal ที่ run command ไว้แล้วกด ctrl+c
+- ใช้คำสั่ง ``` kubectl delete service hello-node ```
+### Expose แบบไม่พึ่ง platform minikube *** แนะนำแบบนี้ ***
+```
+kubectl expose deployment hello-node --type=ClusterIP --port=8080 --target-port=80 
+```
+หน้าเว็บจะยังไม่แสดง
+```
+kubectl port-forward service/hello-node 8080:8080 --address=0.0.0.0
+```
+หลังจากใส่คำสั่งนี้แล้ว หน้าเว็บแสดงใน `http://localhost:8080`
+### ทดลอง Scale
+```
+kubectl scale --replicas=2 deployment hello-node
+
+kubectl get deployment
+```
+**ลองเสร็จแล้วทำการลบทิ้ง**
+```
+kubectl delete deployment hello-node
+
+kubectl delete service hello-node
+
+kubectl get pod
+```
+
+## Workshop kubernetes Script
+#### สไลด์ อ.สมหมาย กรังพานิช minikube หน้า 43
+เช็ค Kind และ API Version
+```
+kubectl api-resources
+``` 
+
+### 1. สร้าง Deployment yaml ไฟล์  
+hello.yml
+```
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: hello-world
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: hello-world
+  template:
+    metadata:
+      labels:
+        app: hello-world
+    spec:
+      containers:
+        - name: hello-world-server
+          image: nginx:alpine
+          ports:
+            - containerPort: 80
+```
+Run command :
+```
+kubectl apply -f ./hello.yml
+kubectl get deployment
+kubectl get pod
+```
+
+### 2. สร้าง Service yaml ไฟล์
+สามารถเขียนรวมในไฟล์ hello.yml ได้แต่ต้องมี --- ขีดสามขีดคั่นเพื่อแยก  
+
+hello.yml
+```
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: hello-world
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: hello-world
+  template:
+    metadata:
+      labels:
+        app: hello-world
+    spec:
+      containers:
+        - name: hello-world-server
+          image: nginx:alpine
+          ports:
+            - containerPort: 80
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: hello-service
+  labels:
+    app: hello-service
+spec:
+  selector:
+    app: hello-world
+  ports:
+    - name: hello-port
+      protocol: TCP
+      port: 8080
+      targetPort: 80
+  type: ClusterIP
+
+
+```
+Run command :
+```
+kubectl apply -f ./hello.yml
+
+kubectl port-forward service/hello-world 8080:8080 --address=0.0.0.0
+```
+ถ้าไม่ได้ให้ลองเช็คชื่อ service ลองเปลี่ยนเป็นชื่อ hello-service  
+เข้าไปดูที่หน้าเว็บ : 
+`
+http://localhost:8080
+`
+
+### 3. Kube Dashboard
+ตัว Dashboard เป็น auto-refresh เวลาแก้ไขอะไรจะ update เอง  
+
+ติดตั้ง add-ons 
+```
+minikube addons enable metrics-server
+```
+Run command :
+```
+minikube dashboard
+```
+
+### ประยุกต์ใช้กับ container ที่เคย push ขึ้น gitlab registry
+สร้างไฟล์ my-web.yml
+```
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: my-web
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: my-web
+  template:
+    metadata:
+      labels:
+        app: my-web
+    spec:
+      containers:
+        - name: my-web-server
+          image: registry.gitlab.com/ktpfw1110/my-devops
+          ports:
+            - containerPort: 80
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: my-web-service
+  labels:
+    app: my-web-service
+spec:
+  selector:
+    app: my-web
+  ports:
+    - name: hello-port
+      protocol: TCP
+      port: 8080
+      targetPort: 80
+  type: ClusterIP
+
+```
+สร้าง deployment และ service
+```
+kubectl apply -f ./my-web.yml  
+```
+port forward เพื่อให้เข้าดูผ่านเว็บได้
+```
+kubectl port-forward service/my-web-service 8081:8080 --address=0.0.0.0
+```
+เข้าไปดูที่หน้าเว็บ : 
+`
+http://localhost:8081
+`
+
+![Docker container implement with K8s ](./images/img3.png)
+
+### 3.สร้าง ConfigMap yml เพื่อการ Configuration data (env variable mySql phpmyadmin)
+#### สไลด์ อ.สมหมาย กรังพานิช minikube หน้า 47
+สร้างไฟล์ deploy-myadmin.yml 
+```
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: mydb
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: mydb
+  template:
+    metadata:
+      labels:
+        app: mydb
+    spec:
+      containers:
+        - name: mydb-server
+          image: mysql
+          ports:
+            - containerPort: 3306
+          env:
+            - name: MYSQL_ROOT_PASSWORD
+              value: root1234
+            - name: MYSQL_DATABASE
+              value: test_db
+            - name: MYSQL_USER
+              value: test
+            - name: MYSQL_PASSWORD
+              value: test12345678
+```
+ต้อง declare ว่า application เราใช้ port อะไร **mysql ใช้ port 3306**  
+
+create deployment : 
+```
+kubectl apply -f deploy-myadmin.yml
+```
+### สร้าง Service ในไฟล์ deploy-myadmin.yml
+เพิ่ม mysql Service, phpmyadmin Deployment and Service ในไฟล์ deploy-myadmin.yml 
+```
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: mydb
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: mydb
+  template:
+    metadata:
+      labels:
+        app: mydb
+    spec:
+      containers:
+        - name: mydb-server
+          image: mysql
+          ports:
+            - containerPort: 3306
+          env:
+            - name: MYSQL_ROOT_PASSWORD
+              value: root1234
+            - name: MYSQL_DATABASE
+              value: test_db
+            - name: MYSQL_USER
+              value: test
+            - name: MYSQL_PASSWORD
+              value: test12345678
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: mydb-service
+  labels:
+    app: mydb-service
+spec:
+  selector:
+    app: mydb
+  ports:
+    - name: db-port
+      protocol: TCP
+      port: 3306
+      targetPort: 3306
+  type: ClusterIP
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: myadmin
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: myadmin
+  template:
+    metadata:
+      labels:
+        app: myadmin
+    spec:
+      containers:
+        - name: myadmin-server
+          image: phpmyadmin
+          ports:
+            - containerPort: 80
+          env:
+            - name: PMA_HOST
+              value: mydb-service
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: myadmin-service
+  labels:
+    app: myadmin-service
+spec:
+  selector:
+    app: myadmin
+  ports:
+    - name: myadmin-port
+      protocol: TCP
+      port: 80
+      targetPort: 80
+  type: ClusterIP
+```
+Run command :
+```
+kubectl apply -f deploy-myadmin.yml
+```
+ถ้าสำเร็จแล้ว Run command เพื่อเปิด Service
+```
+kubectl port-forward service/myadmin-service 9080:80
+```
+เข้าไปดูที่หน้าเว็บ : 
+`
+http://localhost:9080
+`
+
+![mysql and phpmyadmin ](./images/img4.png)
+
+### วิธีการทำ Externalize Configuration หรือการแยก config มาไว้ที่ไฟล์อื่น 
+#### สไลด์ อ.สมหมาย กรังพานิช minikube หน้า 47
+สร้างไฟล์ mysql-config.yml
+```
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: mysql-config
+data:
+  root-password: "1234"
+  database-name: "simple_db"
+  user: "usr"
+  password: "usr"
+```
+Run command เพื่อทำการสร้าง
+```
+kubectl apply -f mysql-config.yml
+
+minikube dashboard
+```
+ไปดูที่ dashboard หัวข้อ Config Maps ก็จะเห็นไฟล์ที่เราพึ่งสร้างสามารถเข้าไปดู password ต่างๆ ได้จะเห็นเฉพาะ admin ที่ดู dashboard  
+
+### หลังจากนั้นเราต้องกลับไปแก้ใน script deploy-myadmin.yml ให้เป็น Externalize Configuration
+#### สไลด์ อ.สมหมาย กรังพานิช minikube หน้า 48
+deploy-myadmin.yml
+```
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: mydb
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: mydb
+  template:
+    metadata:
+      labels:
+        app: mydb
+    spec:
+      containers:
+        - name: mydb-server
+          image: mysql
+          ports:
+            - containerPort: 3306
+          env:
+            - name: MYSQL_ROOT_PASSWORD
+              valueFrom:
+                configMapKeyRef:
+                  name: mysql-config
+                  key: root-password
+            - name: MYSQL_DATABASE
+              valueFrom:
+                configMapKeyRef:
+                  name: mysql-config
+                  key: database-name
+            - name: MYSQL_USER
+              valueFrom:
+                configMapKeyRef:
+                  name: mysql-config
+                  key: user
+            - name: MYSQL_PASSWORD
+              valueFrom:
+                configMapKeyRef:
+                  name: mysql-config
+                  key: password
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: mydb-service
+  labels:
+    app: mydb-service
+spec:
+  selector:
+    app: mydb
+  ports:
+    - name: db-port
+      protocol: TCP
+      port: 3306
+      targetPort: 3306
+  type: ClusterIP
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: myadmin
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: myadmin
+  template:
+    metadata:
+      labels:
+        app: myadmin
+    spec:
+      containers:
+        - name: myadmin-server
+          image: phpmyadmin
+          ports:
+            - containerPort: 80
+          env:
+            - name: PMA_HOST
+              value: mydb-service
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: myadmin-service
+  labels:
+    app: myadmin-service
+spec:
+  selector:
+    app: myadmin
+  ports:
+    - name: myadmin-port
+      protocol: TCP
+      port: 80
+      targetPort: 80
+  type: ClusterIP
+
+```
+Run commad :
+```
+kubectl apply -f deploy-myadmin.yml
+```
+เข้าไปดูที่หน้าเว็บ : 
+`
+http://localhost:9080
+`
+
+**เมื่อเข้า phpmyadmin ได้แล้ว รหัสผ่าน, ชื่อฐานข้อมูบ ก็จะเปลี่ยนไปตามไฟล์ ConfigMap(mysql-config.yml)**
+
+## Dealing with application secret
+#### สไลด์ อ.สมหมาย กรังพานิช minikube หน้า 49
+- ไปที่ gitlab project แล้วตั้งค่าให้เป็น private repo
+- เพื่อทดลองดึง image บน gitlab โดยต้อง Authentication
+  - ทำการลบ Deployment : my-web
+    ```
+    kubectl delete -f my-web.yml
+    ```
+  - ทำการสร้างใหม่ Deployment : my-web
+    ```
+    kubectl apply -f my-web.yml
+    ```
+    **ไปดูที่ Dashboard จะปรากฎ error เพราะไม่สามารถ pull image ได้เพราะยังไม่ได้ Authentication**
+      
+    " Failed to pull image "registry.gitlab.com/ktpfw1110/my-devops": Error response from daemon: Head https://registry.gitlab.com/v2/ktpfw1110/my-devops/manifests/latest: denied: access forbidden"
+  
+- Run command เพื่อ Authentication  
+  ```
+  kubectl create secret docker-registry regcred --docker-server=registry.gitlab.com --docker-username=ktpfw1110 --docker-password=<your password> --docker-email=ktpfw1110@gmail.com
+
+  kubectl get secret
+  ```
+  ไปดู Dashboard -> Secret จะมีเพิ่มเข้ามา
+
+  ![Dashboard -> Secret ](./images/img5.png)
+- แก้ไข code เพิ่ม imagePullSecrets ใน my-web.yml
+```
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: my-web
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: my-web
+  template:
+    metadata:
+      labels:
+        app: my-web
+    spec:
+      containers:
+        - name: my-web-server
+          image: registry.gitlab.com/ktpfw1110/my-devops
+          ports:
+            - containerPort: 80
+      imagePullSecrets:
+        - name: regcred
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: my-web-service
+  labels:
+    app: my-web-service
+spec:
+  selector:
+    app: my-web
+  ports:
+    - name: hello-port
+      protocol: TCP
+      port: 8080
+      targetPort: 80
+  type: ClusterIP
+
+```
+Run command :
+```
+kubectl apply -f my-web.yml
+```
+หากลองแล้วไม่ได้ให้ลบดูก่อน
+```
+kubectl delete -f my-web.yml 
+```
+
+### Service Ingress แถม
+setting enable ingress ใน minikube ก่อน
+    ```
+    minikube addons list
+    minikube addons enable ingress
+    minikube addons enable ingress-dns
+    ```
+สร้างไฟล์ชื่อ service-ingress.yml
+```
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: http-ingress
+  annotations:
+    nginx.ingress.kubernetes.io/enable-cors: "true"
+    nginx.ingress.kubernetes.io/rewrite-target: /
+spec:
+  rules:
+    - http:
+        paths: 
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: my-web-service
+                port:
+                  number: 8080
+```
+Run command
+```
+kubectl apply -f service-ingress.yml
+```
+ไปดูที่ Dashboard -> Service -> Ingresses ก็จะเห็น http-ingress เพิ่มขึ้นมาใหม่
+
+ไปดูต่อในคลิป CE DevOps (04) ประมาณ 3:35:00
+ตั้งแต่ติดตั้ง VScode Extension : Remote Developer
+
+# Part Jenkins 
+### สไลด์ อ.สมหมาย กรังพานิช DevOps_Gitlab_Jenkins_K8s หน้า 85
+### Jenkins setup
+- VM หรือ Cloud สร้าง Instances jenkins, build-server
+- Setup Jenkins Master
+  - Unlock Jenkins
+  - Install Plugins
+  - Create Admin User
+  - **Add Credentials** 
+- Create New Jobs
+  - Setting and Config Trigger
+- Pipeline Script
+- View Jobs List, Jobs log, Console Output
+- Add new node
+- Add Credentials ให้ 2 Instance คุยกันผ่าน SSH Username with private key
+
+### เริ่มทำ Jenkinsfile script
+สร้างไฟล์ชื่อ Jenkinsfile
+```
+pipeline {
+    agent any
+    environment {
+        APP_NAME = "test app name"
+    }
+    stages {
+        stage('Build Image'){
+            steps {
+                sh "echo ${env.APP_NAME}"
+            }
+        }
+    }
+}
+```
+เพิ่ม sh docker version และ agent
+```
+pipeline {
+    agent {label 'build-server'}
+    environment {
+        APP_NAME = "test app name"
+    }
+    stages {
+        stage('Build Image'){
+            steps {
+                sh "echo ${env.APP_NAME}"
+                sh "docker version"
+            }
+        }
+    }
+}
+```
+ทำการ push ขึ้น dev แล้ว merge เข้า main จากนั้นไปกด build (กด manual)
+### กระบวนการทำ Auto Build ส่วนของ CI 
+Jenkins -> Jobs ตัวเอง -> configuration -> Build Trigger -> checked Poll SCM -> Schedule = H/3 * * * *  
+crontab ว่าทุกๆ 3 นาทีจะไปเช็ค Jobs ว่ามี code เปลี่ยนแปลงมั้ย  
+
+![Auto build ](./images/img6.png)
+
+### ทดลองนำ docker image ใน registry มาใช้ Auto build
+jenkinsfile
+```
+pipeline {
+    agent {label 'build-server'}
+    environment {
+        APP_NAME = "test app name"
+    }
+    stages {
+        stage('Build Image'){
+            steps {
+                sh "echo ${env.APP_NAME}"
+                sh "docker version"
+                sh "docker build -t registry.gitlab.com/ktpfw1110/my-devops ."
+            }
+        }
+    }
+}
+
+```
+แก้ code เสร็จแล้วทำการ push เข้า dev แล้ว merge request เข้า main  
+จากนั้นดูว่า Auto Build หรือไม่ ไม่ต้องกด build now ใน jenkins  
+
+**เป็นอันเสร็จสิ้นการทำ CI**
+### การทำ CD นำ docker image ที่ build ก่อนหน้านี้ไปเก็บไว้ใน Registry เพื่อเตรียม Deploy
+![CD ](./images/img7.png)
+
+jenkinsfile
+```
+pipeline {
+    agent {label 'build-server'}
+    environment {
+        APP_NAME = "test app name"
+    }
+    stages {
+        stage('Build Image'){
+            steps {
+                sh "echo ${env.APP_NAME}"
+                sh "docker version"
+                sh "docker build -t registry.gitlab.com/ktpfw1110/my-devops ."
+            }
+        }
+
+        stage("Delivery") {
+            steps {
+                withCredentials(
+                    [usernamePassword(
+                        credentialsId: 'gitlab-id',
+                        passwordVariable: 'gitlabPassword',
+                        usernameVariable: 'gitlabUser'
+                    )]
+                ){
+                    sh "docker login registry.gitlab.com -u ${gitlabUser} -${gitlabPassword}"
+                    sh "docker push registry.gitlab.com/ktpfw1110/my-devops"
+                }
+            }
+        }
+    }
+}
+```
+*เราเปลี่ยนแค่ gitlab-id User,Pass ไม่ต้องเปลี่ยน  
+จากนั้นทำการ push dev และ merge เข้า main จะได้ผลลัพธ์ คือ image ใหม่ใน Registry
+### ลบ image เก่าออกจากเครื่องเพื่อไม่ให้เปลืองพื้นที่ disk เพราะเก็บไว้ใน Registry แล้ว และ ประกาศตัวแปร เก็บชื่อ image
+```
+pipeline {
+    agent {label 'build-server'}
+    environment {
+        APP_NAME = "test app name"
+        IMAGE_NAME = "registry.gitlab.com/ktpfw1110/my-devops"
+    }
+    stages {
+        stage('Build Image'){
+            steps {
+                sh "echo ${env.APP_NAME}"
+                sh "docker version"
+                sh "docker build -t ${IMAGE_NAME} ."
+            }
+        }
+
+        stage("Delivery") {
+            steps {
+                withCredentials(
+                    [usernamePassword(
+                        credentialsId: 'gitlab-id',
+                        passwordVariable: 'gitlabPassword',
+                        usernameVariable: 'gitlabUser'
+                    )]
+                ){
+                    sh "docker login registry.gitlab.com -u ${gitlabUser} -${gitlabPassword}"
+                    sh "docker push ${IMAGE_NAME}"
+                    sh "docker rmi ${IMAGE_NAME}"
+                }
+            }
+        }
+    }
+}
+```
+Merge into main
+
+### นำเลข changes ไปทำ version ให้ image
+
+![jenkins changes ](./images/img8.png)
+
+jenkinsfile
+```
+pipeline {
+    agent {label 'build-server'}
+    environment {
+        APP_NAME = "test app name"
+        IMAGE_NAME = "registry.gitlab.com/ktpfw1110/my-devops"
+    }
+    stages {
+        stage('Build Image'){
+            steps {
+                sh "echo ${env.APP_NAME}"
+                sh "docker version"
+                sh "docker build -t ${IMAGE_NAME} ."
+            }
+        }
+
+        stage("Delivery") {
+            steps {
+                withCredentials(
+                    [usernamePassword(
+                        credentialsId: 'gitlab-id',
+                        passwordVariable: 'gitlabPassword',
+                        usernameVariable: 'gitlabUser'
+                    )]
+                ){
+                    sh "docker login registry.gitlab.com -u ${gitlabUser} -${gitlabPassword}"
+                    sh "docker tag ${IMAGE_NAME} ${IMAGE_NAME}:${env.BUILD_NUMBER}"
+                    sh "docker push ${IMAGE_NAME}"
+                    sh "docker push ${IMAGE_NAME}:${env.BUILD_NUMBER}"
+                    sh "docker rmi ${IMAGE_NAME}"
+                    sh "docker rmi ${IMAGE_NAME}:${env.BUILD_NUMBER}"
+                }
+            }
+        }
+    }
+}
+```
+stage Deliver เป็นการนำ image ไปเก็บไว้ใน registry โดยนำเลข changes ไปทำ version ให้ image เพื่อให้รู้ว่าแต่ละครั้งที่ build เราแก้อะไรไป
+# Part Deploy Kubernetes
+### สไลด์ อ.สมหมาย กรังพานิช DevOps_Gitlab_Jenkins_K8s หน้า 112
+
+### อ. Setup Instance และ New Nodes
+- อ.สร้าง Instance k8s และ Setup เพื่อให้ทดสอบ Deploy  
+
+  ![aws instance ](./images/img9.png)
+
+- เมื่อติดตั้ง Deploy Server เสร็จแล้ว อ.ก็ ไปสร้าง node ใหม่ขึ้นมาที่ Dashboard -> Manage Jenkins -> Nodes  
+- ชื่อของ Node name จะต้องนำไปใช้ใน script
+
+  ![jenkins new node 1 ](./images/img10.png)
+  ![jenkins new node 2 ](./images/img11.png)
+  ![jenkins new node 3 ](./images/img12.png)
+  ![jenkins new node 4 ](./images/img13.png)
+
+### Part Script
+Jenkinsfile เพิ่มส่วน stage Deploy
+```
+pipeline {
+    agent {label 'build-server'}
+    environment {
+        APP_NAME = "test app name"
+        IMAGE_NAME = "registry.gitlab.com/ktpfw1110/my-devops"
+    }
+    stages {
+        stage('Build Image'){
+            steps {
+                sh "echo ${env.APP_NAME}"
+                sh "docker version"
+                sh "docker build -t ${IMAGE_NAME} ."
+            }
+        }
+
+        stage("Delivery") {
+            steps {
+                withCredentials(
+                    [usernamePassword(
+                        credentialsId: 'gitlab-id',
+                        passwordVariable: 'gitlabPassword',
+                        usernameVariable: 'gitlabUser'
+                    )]
+                ){
+                    sh "docker login registry.gitlab.com -u ${gitlabUser} -${gitlabPassword}"
+                    sh "docker tag ${IMAGE_NAME} ${IMAGE_NAME}:${env.BUILD_NUMBER}"
+                    sh "docker push ${IMAGE_NAME}"
+                    sh "docker push ${IMAGE_NAME}:${env.BUILD_NUMBER}"
+                    sh "docker rmi ${IMAGE_NAME}"
+                    sh "docker rmi ${IMAGE_NAME}:${env.BUILD_NUMBER}"
+                }
+            }
+        }
+
+        stage("Deploy"){
+            agent{ label "deploy-server" }
+            steps{
+                sh "kubectl apply -f my-web.yml"
+            }
+        }
+    }
+}
+```
+ไปดูที่ Jenkins dashboard (อาจจะต้อง merge main ก่อนรึเปล่าไม่แน่ใจ)  
+ต่อไป อ. พาไปดู kubernetes dashboard `http://localhost:10443` ถ้าถามหา Token ให้ไปดูใน Terminal
+```
+microk8s dashboard
+or
+microk8s dashboard-proxy
+```
+![microk8s dashboard](./images/img14.png)
+error ดึง image มาไม่ได้เพราะไม่ได้ตั้งค่า secrets (regcred) ต้องไปสร้าง Secret บน Kubernetes Dashboard ก่อน Config And Storage -> Secrets สามารถเขียน script แล้ว Deploy ขึ้นมาได้หรือเพิ่มเองก็ได้
+
+### ส่วนของการจัดการ secret ไปดูต่อในวิดีโอ 
+CE DevOps 06 นาทีที่ 02:28:00
+
+![gitlab -> secret(regcred)](./images/img15.png)
+- manage -> member add อ. เป็น member role Maintainer
+- โดยปกติในบริษัทจะมีตัวแทนมาทำแบบนี้
+- Deployments บน kubernetes dashboard จะเริ่มเขียว
+### ต่อด้วยการทำ Service Ingress 
+- อ. ทำ service-ingress ให้ดู ในไฟล์ service-ingress.yml แล้ว deploy อ.ทำบน ui kubernetes dashboard เลย
+
+  ![Service Ingress for all user01-08](./images/img16.png)
+
+- ingress ก็จะมี end point ขึ้น ทีนี้ทุกคนจะสามารถ Access ได้ด้วย ip `52.77.231.23/user02` ซึ่งเป็น ip ของเครื่อง Instance k8s (aws cloud)
+  ![Manual Create Ingresses](./images/img17.png)
+
+### แก้ปัญหา Build Jenkins แล้วติด Permission เพราะมันไปดึง Session ของคนอื่นมา
+CE DevOps 06 นาทีที่ 02:46:30
+- ไปที่ Jenkinsfile
+- แก้ไข บรรทัดที่ 20 credentialsId: 'gitlab-id' เป็น 'gitlab-admin'
+- เวลา Run Jenkinsfile จะเป็นการใช้ user อ. นำ image ไปเก็บไว้บน Registry ให้ (derivery man ตัวแทนของการจัดการ image) แนะนำให้มี user agent จัดการเรื่องพวกนี้
+- ต่อไปเวลา merge ก็จะลื่นขึ้นไม่ติดเรื่อง Permission ด้วย
+
+### เสร็จสิ้นการทำ Automate Deploy (CD)  
+
+# Part Kong
+### สไลด์ อ.สมหมาย กรังพานิช DevOps_Gitlab_Jenkins_K8s หน้า 112, สไลด์ kong-api-gw หน้า 52, VDO CE DevOps (07)
+![concept pipeline](./images/img18.png)
+### Install Kong
+```
+git clone https://gitlab.com/devops1174/kong.git
+
+cd kong
+
+cd kong-server
+
+docker-compose up -d
+```
+
+![kong check ip](./images/img19.png)
+1. browser kong port 1337 -> `<ip-address>/1337` ip instance kong
+  ![kong register page](./images/img20.png)
+1. อ.สร้าง admin และ สร้าง user ให้ นศ. แต่ role เป็น admin เหมือนกันทุกคน
+  ![kong user create](./images/img21.png)
+1. สร้าง connections ใช้ ip Instances kong
+  ![kong create connection](./images/img22.png)
+1. kong -> connections ไปกด toggle ให้เป็นสีเขียว  
+  ![kong create connection](./images/img23.png)
+
+## Workshop Kong
+### ดู concept ในสไลด์ kong-api-gw version KTP หน้า 63 : Step การสร้าง 1. Service -> 2. Route -> 3.Kong
+เริ่มสร้างตาม Step ในสไลด์ที่ 64  
+### Step 1 สร้าง Service
+- Kong Dashboard -> SERVICES -> ADD NEW SERVICE
+- CREATE SERVICE กรอกข้อมูล Minimum (Name, Protocal, Host, Port) details ดูต่อได้ในสไลด์หน้า 65
+- เสร็จสิ้นก็จะมี Service ที่พึ่งสร้างไปเพิ่มเข้ามา
+### Step 2 สร้าง Routes
+- เลือกคลิกเข้าไปที่ service ที่พึ่งสร้าง
+- ไปที่ Routes -> ADD ROUTE
+- Add route to API กรอกข้อมูล Minimum (Name, Paths)
+- เข้า Browser `http://<IP Instance 3 Kong>:8000/u01`  อ. set ไว้ที่ 8000 (ปกติใช้ 80) เพราะไม่ให้นศ. สับสนกับ port 80 ของ k8s
+- จะขึ้น 404 Not found เพราะเรายังไม่ได้ set path ของ Kong Serviec -> Path เป็น /user01
+  ![kong set path](./images/img24.png)
+- หลังจากนั้นก็จะเข้า /user01 ได้
+- หมายเหตุ บางที service ใน k8s(/user01) เรา deploy ไว้อีกชื่อนึง ทางเข้าใน Route(/u01) ไม่จำเป็นต้องชื่อเดียวกันเสมอ
+  ![k8s service ingress](./images/img25.png)
+
+### Basic Auth Plugin สไลด์หน้า 77
