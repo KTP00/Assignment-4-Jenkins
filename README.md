@@ -167,6 +167,24 @@ sudo apt-get update && sudo apt-get upgrade
 ### ทดสอบทำงานที่ Agent any จะส่งไปทำงานที่ Instance Jenkins
 - ทดลองสร้าง Jenkinsfile ใน Repo test-jenkins ที่ได้มีการ add credentials ไว้ `git clone https://gitlab.com/ktpfw1110/test-jenkins.git`
     ![pipeline script 1](images/img21.png)
+
+    Jenkinsfile
+    ```
+    pipeline {
+        agent {label any}
+        environment {
+            APP_NAME = "test app name"
+        }
+        stages {
+            stage('Build Image'){
+                steps {
+                    sh "echo ${env.APP_NAME}"
+                    sh "docker version"
+                }
+            }
+        }
+    }
+    ```
 - ทำการ Push to dev แล้วจากนั้นกด Merge to main
 - จากนั้นทำการไปกด build(ลองกดแบบ manual) ที่ jenkins UI 
     ![pipeline script 2](images/img22.png)
@@ -199,6 +217,25 @@ sudo apt-get update && sudo apt-get upgrade
     ![New Node 6](images/img33.png)
 - แก้ไข Jenkinsfile ทดสอบส่งคำสั่ง docker version จาก master to slave สังเกตได้จาก agent เปลี่ยนเป็น build-server
     ![jenkinsfile docker](images/img34.png)
+
+    Jenkinsfile
+    ```
+    pipeline {
+        agent {label 'build-server'}
+        environment {
+            APP_NAME = "test app name"
+        }
+        stages {
+            stage('Build Image'){
+                steps {
+                    sh "echo ${env.APP_NAME}"
+                    sh "docker version"
+                }
+            }
+        }
+    }
+
+    ```
     - push to dev and merge to main
     - กด build(manual) ถ้า error ให้ไปกำหนดสิทธิ์ docker Instance build-server
         ![error docker permission](images/img35.png)
