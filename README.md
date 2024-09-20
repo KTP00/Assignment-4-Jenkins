@@ -158,7 +158,7 @@ sudo apt-get update && sudo apt-get upgrade
     ![pipeline 1](images/img19.png)
     ถ้าใส่ Repo URL แล้ว error connection ลองติดตั้ง Git ดู
     ```
-    sudo yum install git-all
+    sudo apt install git-all
     ```
 1. เข้าไป config job ที่ชื่อว่า test_admin
     ![pipeline 2](images/img20.png)
@@ -205,7 +205,8 @@ sudo apt-get update && sudo apt-get upgrade
     - เมื่อสำเร็จแล้วให้ไปดู ที่ Console Log
         ![Build Success 1](images/img36.png)
         ![Build Success 2](images/img37.png)
-# ขั้นตอนการทำ Automate CI
+# CI/CD
+## ขั้นตอนการทำ Automate CI
 - ไปที่ Job(test_admin) ของตัวเอง Dashboard -> test_admin -> Configuration และไปที่เมนู Build Triggers -> checked Poll SCM -> Schedule ใส่ crontab : 
     ```
     H/3 * * * *
@@ -223,7 +224,7 @@ sudo apt-get update && sudo apt-get upgrade
                 steps {
                     sh "echo ${env.APP_NAME}"
                     sh "docker version"
-                    sh "docker build -t registry.gitlab.com/ktpfw1110/my-devops ."
+                    sh "docker build -t registry.gitlab.com/ktpfw1110/test-jenkins ."
                 }
             }
         }
@@ -235,3 +236,46 @@ sudo apt-get update && sudo apt-get upgrade
     ```
     docker images
     ```
+## การทำ CD นำ docker image ที่ build ก่อนหน้านี้ไปเก็บไว้ใน Registry เพื่อเตรียม Deploy
+แก้ไข Jenkinsfile
+```
+pipeline {
+    agent {label 'build-server'}
+    environment {
+        APP_NAME = "test app name"
+        IMAGE_NAME = "registry.gitlab.com/ktpfw1110/test-jenkins"
+    }
+    stages {
+        stage('Build Image'){
+            steps {
+                sh "echo ${env.APP_NAME}"
+                sh "docker version"
+                sh "docker build -t ${IMAGE_NAME} ."
+            }
+        }
+
+        stage("Delivery") {
+            steps {
+                withCredentials(
+                    [usernamePassword(
+                        credentialsId: 'gitlab-admin',
+                        passwordVariable: 'gitlabPassword',
+                        usernameVariable: 'gitlabUser'
+                    )]
+                ){
+                    sh "docker login registry.gitlab.com -u ${gitlabUser} -p ${gitlabPassword}"
+                    sh "docker tag ${IMAGE_NAME} ${IMAGE_NAME}:${env.BUILD_NUMBER}"
+                    sh "docker push ${IMAGE_NAME}"
+                    sh "docker push ${IMAGE_NAME}:${env.BUILD_NUMBER}"
+                    sh "docker rmi ${IMAGE_NAME}"
+                    sh "docker rmi ${IMAGE_NAME}:${env.BUILD_NUMBER}"
+                }
+            }
+        }
+    }
+}
+
+```
+หลังจาก merge เข้า main ก็ไปตรวจสอบใน Jenkins Job ว่า build เองหรือไม่ แล้วไปดูที่ Gitlab registry
+![Gitlab registry](images/img39.png)
+**เสร็จขั้นตอนการทำ CD(delivery)**
